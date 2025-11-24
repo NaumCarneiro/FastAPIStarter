@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Escala de Vigilante - Controle Financeiro</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 500px; margin: 0 auto; }
+        .screen { background: white; border-radius: 20px; padding: 30px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); display: none; animation: slideIn 0.3s ease; }
+        .screen.active { display: block; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        h1 { color: #333; margin-bottom: 10px; text-align: center; font-size: 24px; }
+        .subtitle { text-align: center; color: #666; margin-bottom: 20px; font-size: 14px; }
+        .lock-icon { position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px; background: #667eea; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 30px; cursor: pointer; border: none; box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4); transition: all 0.3s; }
+        .lock-icon:hover { transform: scale(1.1); background: #764ba2; }
+        .input-group { margin-bottom: 15px; }
+        label { display: block; font-size: 12px; color: #666; margin-bottom: 5px; font-weight: 500; }
+        input, select, textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; font-family: inherit; }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); }
+        button { width: 100%; padding: 12px; background: #667eea; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; transition: all 0.3s; }
+        button:hover { background: #764ba2; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3); }
+        button:active { transform: translateY(0); }
+        .secondary-btn { background: #999; }
+        .secondary-btn:hover { background: #777; }
+        .error { color: #d32f2f; font-size: 12px; margin-top: 5px; display: none; }
+        .error.show { display: block; }
+        .success { color: #388e3c; font-size: 12px; margin-top: 5px; }
+        table { width: 100%; margin-top: 15px; border-collapse: collapse; font-size: 14px; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; }
+        th { background: #f5f5f5; font-weight: bold; color: #333; }
+        td { color: #666; }
+        .category-badge { display: inline-block; padding: 4px 8px; background: #e0e0e0; border-radius: 4px; font-size: 11px; font-weight: 500; }
+        .total-box { background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 15px 0; text-align: center; }
+        .total-label { font-size: 12px; color: #666; }
+        .total-amount { font-size: 24px; font-weight: bold; color: #667eea; }
+        .chart-container { width: 100%; height: 300px; background: #f9f9f9; border-radius: 8px; margin: 20px 0; display: flex; align-items: center; justify-content: center; color: #999; }
+        .month-selector { display: flex; gap: 10px; margin-bottom: 20px; }
+        .month-selector button { flex: 1; padding: 10px; background: #f0f0f0; color: #333; border: 1px solid #ddd; }
+        .month-selector button.active { background: #667eea; color: white; border-color: #667eea; }
+        .empty-state { text-align: center; color: #999; padding: 40px 20px; }
+        .empty-state-icon { font-size: 48px; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- LOGIN PRIMÁRIO -->
+        <div class="screen active" id="login">
+            <h1>🔐 Escala de Vigilante</h1>
+            <p class="subtitle">Controle Financeiro para Vigilantes</p>
+            <div class="input-group">
+                <label>Usuário</label>
+                <input type="text" id="login_user" placeholder="Digite seu usuário" />
+            </div>
+            <div class="input-group">
+                <label>Senha</label>
+                <input type="password" id="login_pass" placeholder="Digite sua senha" />
+            </div>
+            <button onclick="loginUser()">🔓 Entrar</button>
+            <div id="login-error" class="error"></div>
+        </div>
+
+        <!-- DASHBOARD -->
+        <div class="screen" id="dashboard">
+            <h1>💰 Painel Financeiro</h1>
+            <p class="subtitle">Bem-vindo, <span id="user-name">Usuário</span>!</p>
+            <button onclick="showAddExpense()">➕ Adicionar Despesa</button>
+            <button onclick="showExpenses()">📊 Ver Despesas</button>
+            <button onclick="showIncomeForm()">💵 Registrar Renda</button>
+            <button onclick="showDashboard2()">📈 Resumo Financeiro</button>
+            <button onclick="logout()" class="secondary-btn">🚪 Sair</button>
+        </div>
+
+        <!-- ADICIONAR DESPESA -->
+        <div class="screen" id="add-expense">
+            <h1>➕ Adicionar Despesa</h1>
+            <div class="input-group">
+                <label>Categoria *</label>
+                <select id="category">
+                    <option value="">Selecione uma categoria</option>
+                    <option value="comida">🍕 Comida</option>
+                    <option value="carro">🚗 Carro</option>
+                    <option value="cartao">💳 Cartão</option>
+                    <option value="casa">🏠 Casa</option>
+                    <option value="saude">⚕️ Saúde</option>
+                    <option value="lazer">🎮 Lazer</option>
+                    <option value="outro">📦 Outro</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label>Local</label>
+                <input type="text" id="location" placeholder="Ex: Mercado X, Farmácia Y" />
+            </div>
+            <div class="input-group">
+                <label>Data *</label>
+                <input type="date" id="date" />
+            </div>
+            <div class="input-group">
+                <label>Valor (R$) *</label>
+                <input type="number" id="amount" placeholder="0,00" step="0.01" min="0" />
+            </div>
+            <div class="input-group">
+                <label>Observações</label>
+                <textarea id="notes" placeholder="Detalhes adicionais..." style="resize: vertical; min-height: 60px;"></textarea>
+            </div>
+            <div class="input-group">
+                <label>
+                    <input type="checkbox" id="recurring" /> Repetir este gasto?
+                </label>
+            </div>
+            <div class="input-group" id="recurrence-div" style="display:none;">
+                <label>Quantos meses? *</label>
+                <input type="number" id="recurrence_months" placeholder="12" min="1" max="120" />
+            </div>
+            <button onclick="addExpense()">💾 Salvar Despesa</button>
+            <button onclick="showDashboard()" class="secondary-btn">❌ Cancelar</button>
+            <div id="expense-error" class="error"></div>
+        </div>
+
+        <!-- LISTAR DESPESAS -->
+        <div class="screen" id="expenses-list">
+            <h1>📊 Despesas</h1>
+            <div class="month-selector">
+                <button onclick="prevMonth()">◀ Anterior</button>
+                <span style="flex: 1; text-align: center; padding: 10px; background: #f0f0f0; border-radius: 8px;" id="current-month">Novembro 2025</span>
+                <button onclick="nextMonth()">Próximo ▶</button>
+            </div>
+            <div id="expenses-container"></div>
+            <button onclick="showDashboard()" class="secondary-btn">Voltar</button>
+        </div>
+
+        <!-- REGISTRAR RENDA -->
+        <div class="screen" id="income-form">
+            <h1>💵 Registrar Renda</h1>
+            <div class="input-group">
+                <label>Tipo de Renda *</label>
+                <select id="income_type">
+                    <option value="">Selecione</option>
+                    <option value="salario">💼 Salário</option>
+                    <option value="freelance">🎯 Freelance</option>
+                    <option value="aluguel">🏢 Aluguel</option>
+                    <option value="investimento">📈 Investimento</option>
+                    <option value="bonus">🎁 Bônus</option>
+                    <option value="outro">📦 Outro</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label>Valor (R$) *</label>
+                <input type="number" id="income_amount" placeholder="0,00" step="0.01" min="0" />
+            </div>
+            <div class="input-group">
+                <label>Data *</label>
+                <input type="date" id="income_date" />
+            </div>
+            <div class="input-group">
+                <label>Observações</label>
+                <textarea id="income_notes" placeholder="Detalhes..." style="resize: vertical; min-height: 60px;"></textarea>
+            </div>
+            <button onclick="addIncome()">✅ Registrar Renda</button>
+            <button onclick="showDashboard()" class="secondary-btn">❌ Cancelar</button>
+            <div id="income-error" class="error"></div>
+        </div>
+
+        <!-- RESUMO FINANCEIRO -->
+        <div class="screen" id="dashboard2">
+            <h1>📈 Resumo Financeiro</h1>
+            <div id="summary-stats"></div>
+            <div class="chart-container" id="chart-container">📊 Carregando dados...</div>
+            <button onclick="showDashboard()" class="secondary-btn">Voltar</button>
+        </div>
+
+        <!-- BOTÃO CADEADO (Login Secreto) -->
+        <button class="lock-icon" title="Login Secreto" onclick="showMasterLogin()">🔒</button>
+    </div>
+
+    <script>
+        const API_URL = window.location.origin;
+        let currentUser = null;
+        let token = null;
+        let currentMonth = new Date();
+
+        // Alternar campos de recorrência
+        document.getElementById('recurring').addEventListener('change', function() {
+            document.getElementById('recurrence-div').style.display = this.checked ? 'block' : 'none';
+        });
+
+        // Definir data de hoje como padrão
+        document.getElementById('date').valueAsDate = new Date();
+        document.getElementById('income_date').valueAsDate = new Date();
+
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        async function loginUser() {
+            const user = document.getElementById('login_user').value.trim();
+            const pass = document.getElementById('login_pass').value;
+            const errorDiv = document.getElementById('login-error');
+            
+            if (!user || !pass) {
+                errorDiv.textContent = '❌ Usuário e senha são obrigatórios!';
+                errorDiv.classList.add('show');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/api/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: user, password: pass })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    token = data.access_token;
+                    currentUser = data.user;
+                    document.getElementById('user-name').textContent = currentUser.full_name || user;
+                    errorDiv.classList.remove('show');
+                    showDashboard();
+                } else {
+                    errorDiv.textContent = '❌ ' + (data.detail || 'Acesso não autorizado!');
+                    errorDiv.classList.add('show');
+                }
+            } catch (err) {
+                errorDiv.textContent = '❌ Erro de conexão. Servidor rodando?';
+                errorDiv.classList.add('show');
+                console.error(err);
+            }
+        }
+
+        async function addExpense() {
+            const category = document.getElementById('category').value;
+            const location = document.getElementById('location').value;
+            const date = document.getElementById('date').value;
+            const amount = parseFloat(document.getElementById('amount').value);
+            const notes = document.getElementById('notes').value;
+            const recurring = document.getElementById('recurring').checked;
+            const recurrence = parseInt(document.getElementById('recurrence_months').value) || 1;
+            const errorDiv = document.getElementById('expense-error');
+
+            if (!category || !date || !amount) {
+                errorDiv.textContent = '❌ Preencha os campos obrigatórios!';
+                errorDiv.classList.add('show');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/api/expenses`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        category, location, date, amount, notes,
+                        is_recurring: recurring,
+                        recurrence_months: recurring ? recurrence : null
+                    })
+                });
+
+                if (response.ok) {
+                    document.getElementById('category').value = '';
+                    document.getElementById('location').value = '';
+                    document.getElementById('amount').value = '';
+                    document.getElementById('notes').value = '';
+                    document.getElementById('recurring').checked = false;
+                    errorDiv.textContent = '✅ Despesa adicionada com sucesso!';
+                    errorDiv.classList.add('show');
+                    errorDiv.style.color = '#388e3c';
+                    setTimeout(() => showDashboard(), 1500);
+                } else {
+                    const error = await response.json();
+                    errorDiv.textContent = '❌ ' + (error.detail || 'Erro ao adicionar!');
+                    errorDiv.classList.add('show');
+                }
+            } catch (err) {
+                errorDiv.textContent = '❌ Erro de conexão!';
+                errorDiv.classList.add('show');
+                console.error(err);
+            }
+        }
+
+        async function addIncome() {
+            const income_type = document.getElementById('income_type').value;
+            const amount = parseFloat(document.getElementById('income_amount').value);
+            const date = document.getElementById('income_date').value;
+            const notes = document.getElementById('income_notes').value;
+            const errorDiv = document.getElementById('income-error');
+
+            if (!income_type || !amount || !date) {
+                errorDiv.textContent = '❌ Preencha os campos obrigatórios!';
+                errorDiv.classList.add('show');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/api/income`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        income_type, amount, date, notes
+                    })
+                });
+
+                if (response.ok) {
+                    document.getElementById('income_type').value = '';
+                    document.getElementById('income_amount').value = '';
+                    document.getElementById('income_notes').value = '';
+                    errorDiv.textContent = '✅ Renda registrada com sucesso!';
+                    errorDiv.classList.add('show');
+                    errorDiv.style.color = '#388e3c';
+                    setTimeout(() => showDashboard(), 1500);
+                } else {
+                    const error = await response.json();
+                    errorDiv.textContent = '❌ ' + (error.detail || 'Erro ao registrar!');
+                    errorDiv.classList.add('show');
+                }
+            } catch (err) {
+                errorDiv.textContent = '❌ Erro de conexão!';
+                errorDiv.classList.add('show');
+                console.error(err);
+            }
+        }
+
+        async function loadExpenses() {
+            const year = currentMonth.getFullYear();
+            const month = String(currentMonth.getMonth() + 1).padStart(2, '0');
+            const monthStr = currentMonth.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+            document.getElementById('current-month').textContent = monthStr.charAt(0).toUpperCase() + monthStr.slice(1);
+
+            try {
+                const response = await fetch(`${API_URL}/api/expenses?year=${year}&month=${month}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    const expenses = await response.json();
+                    const container = document.getElementById('expenses-container');
+                    
+                    if (expenses.length === 0) {
+                        container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div>Nenhuma despesa registrada neste mês</div>';
+                    } else {
+                        let html = '<table><thead><tr><th>Data</th><th>Categoria</th><th>Valor</th><th>Local</th></tr></thead><tbody>';
+                        let total = 0;
+                        expenses.forEach(exp => {
+                            html += `<tr>
+                                <td>${new Date(exp.date).toLocaleDateString('pt-BR')}</td>
+                                <td><span class="category-badge">${exp.category}</span></td>
+                                <td>R$ ${exp.amount.toFixed(2)}</td>
+                                <td>${exp.location || '-'}</td>
+                            </tr>`;
+                            total += exp.amount;
+                        });
+                        html += '</tbody></table>';
+                        html += `<div class="total-box"><div class="total-label">Total do Mês</div><div class="total-amount">R$ ${total.toFixed(2)}</div></div>`;
+                        container.innerHTML = html;
+                    }
+                }
+            } catch (err) {
+                console.error(err);
+                document.getElementById('expenses-container').innerHTML = '<div class="empty-state">❌ Erro ao carregar despesas</div>';
+            }
+        }
+
+        async function loadSummary() {
+            try {
+                const response = await fetch(`${API_URL}/api/statistics`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const statsDiv = document.getElementById('summary-stats');
+                    
+                    let totalExpenses = 0;
+                    let html = '<table><thead><tr><th>Categoria</th><th>Total</th><th>%</th></tr></thead><tbody>';
+                    
+                    data.expenses_by_category.forEach(cat => {
+                        totalExpenses += cat.total;
+                        const percentage = data.total_income > 0 ? ((cat.total / data.total_income) * 100).toFixed(1) : 0;
+                        html += `<tr>
+                            <td><span class="category-badge">${cat.category}</span></td>
+                            <td>R$ ${cat.total.toFixed(2)}</td>
+                            <td>${percentage}%</td>
+                        </tr>`;
+                    });
+                    
+                    const remaining = data.total_income - totalExpenses;
+                    const remainingPercent = data.total_income > 0 ? ((remaining / data.total_income) * 100).toFixed(1) : 0;
+                    
+                    html += `<tr style="background: #f0f0f0; font-weight: bold;">
+                        <td>Economizado</td>
+                        <td>R$ ${remaining.toFixed(2)}</td>
+                        <td>${remainingPercent}%</td>
+                    </tr>`;
+                    html += '</tbody></table>';
+                    
+                    html += `<div class="total-box" style="background: #e3f2fd; margin-top: 20px;">
+                        <div class="total-label">Renda Mensal</div>
+                        <div class="total-amount" style="color: #2196F3;">R$ ${data.total_income.toFixed(2)}</div>
+                        <div class="total-label" style="margin-top: 10px;">Gasto Total</div>
+                        <div style="font-size: 20px; color: #d32f2f;">R$ ${totalExpenses.toFixed(2)}</div>
+                    </div>`;
+                    
+                    statsDiv.innerHTML = html;
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function prevMonth() {
+            currentMonth.setMonth(currentMonth.getMonth() - 1);
+            loadExpenses();
+        }
+
+        function nextMonth() {
+            currentMonth.setMonth(currentMonth.getMonth() + 1);
+            loadExpenses();
+        }
+
+        function showDashboard() { showScreen('dashboard'); }
+        function showAddExpense() { showScreen('add-expense'); }
+        function showExpenses() { currentMonth = new Date(); loadExpenses(); showScreen('expenses-list'); }
+        function showIncomeForm() { showScreen('income-form'); }
+        function showDashboard2() { loadSummary(); showScreen('dashboard2'); }
+        
+        function logout() { 
+            token = null; 
+            currentUser = null; 
+            document.getElementById('login_user').value = '';
+            document.getElementById('login_pass').value = '';
+            showScreen('login'); 
+        }
+        
+        function showMasterLogin() { 
+            alert('🔒 LOGIN SECRETO\n\nUsuário: NaumJMC\nSenha: Jeci2002\n\nAcesse: /master para gerenciar usuários'); 
+        }
+    </script>
+</body>
+</html>
